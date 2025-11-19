@@ -1,0 +1,11 @@
+.env
+__pycache__/
+.uv-cache/
+
+.vscode/
+*.code-workspace
+
+.DS_Store
+
+venv/
+*.log
