@@ -1,6 +1,9 @@
 import streamlit as st
 import pandas as pd
+from pathlib import Path
 import scraper  # Importing your scraper.py
+
+DATA_PATH = Path(scraper.HISTORY_CSV)
 
 def main():
     st.set_page_config(page_title="M9 Tiger Tooth Tracker", page_icon="🐅", layout="wide")
@@ -16,10 +19,11 @@ def main():
                 raw_data = scraper.fetch_listings()
                 
                 if raw_data:
-                    # Convert to DataFrame for easier handling
                     df = pd.DataFrame(raw_data)
                     st.session_state['data'] = df
-                    st.success(f"Fetched {len(df)} listings!")
+                    # persist to history so the chart grows over time
+                    scraper.save_history_csv(raw_data)
+                    st.success(f"Fetched {len(df)} listings and saved to history!")
                 else:
                     st.error("No data found or API error.")
 
@@ -57,6 +61,19 @@ def main():
             width='stretch',
             hide_index=True
         )
+
+
+        # 3. Price over time chart (uses saved CSV)
+        if DATA_PATH.exists():
+            try:
+                hist = pd.read_csv(DATA_PATH, parse_dates=["timestamp"])
+                # get floor price per fetch (each fetch has identical timestamps for its rows)
+                floor_per_fetch = hist.groupby("timestamp", as_index=False)["price"].min().sort_values("timestamp")
+                floor_per_fetch = floor_per_fetch.set_index("timestamp")
+                st.subheader("Floor Price Over Time")
+                st.line_chart(floor_per_fetch["price"])
+            except Exception as e:
+                st.error(f"Could not read history CSV: {e}")
     else:
         st.info("👈 Click 'Fetch Latest Prices' in the sidebar to start.")
 
